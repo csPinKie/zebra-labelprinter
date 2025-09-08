@@ -12,6 +12,7 @@ Dieses Script druckt diverse Label (zugeschnitten und/oder skaliert) auf dem VEV
 ## Treiber
 
 Original-Treiber: https://www.vevor.com/pages/download-center-label-printer
+
 Alternativ-Treiber (z.B. fuer Raspberry/aarch64): https://help.flashlabel.com/support/solutions/folders/150000439213
 
 Leider liegt der rastertolabel Sourcecode aus dem Treiber nicht vor, weswegen die PPD Datei alleine leider nicht ausreicht und daher eine Treiberversion passend fuer die Architektur installiert werden muss.
