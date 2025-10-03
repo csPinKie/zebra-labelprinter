@@ -1,38 +1,101 @@
-# VEVOR Y486 Labelprinter
+# 🖨️ Zebra Label Printer Automation
 
-Dieses Script druckt diverse Label (zugeschnitten und/oder skaliert) auf dem VEVOR Y486 Label Drucker unter Linux aus. Genutzt werden 8x4" Label, 6x4" Label sollten aber auch problemlos funktionieren.
+Dieses Repository enthält ein einfaches, Python- und Bash-basiertes System zum **automatischen Drucken von Versandlabels** (100x150 mm, z. B. DHL, Hermes, Amazon) auf einem Zebra/VEVOR GK420d Labeldrucker unter Linux (getestet auf Raspberry Pi OS).
 
-## Prerequisites
+Das System überwacht einen **Ordner für eingehende Dateien** und druckt alles automatisch auf den Zebra-Drucker. Unterstützt werden **PDF, PNG, JPG, ZPL**.
 
-- Installierter und funktionsfaehiger Drucker in CUPS
-- python: requests, cups, PyPDF2, fitz
-- Ordnerstruktur: incoming, original, printed
-- optional: inoticoming
+---
 
-## Treiber
+## 📂 Ordnerstruktur
 
-Original-Treiber: https://www.vevor.com/pages/download-center-label-printer
+Alle Dateien werden in `/var/tmp/labels` verwaltet:
 
-Alternativ-Treiber (z.B. fuer Raspberry/aarch64): https://help.flashlabel.com/support/solutions/folders/150000439213
+- `incoming/` → neue Dateien hier ablegen (werden automatisch verarbeitet)  
+- `original/` → Kopie des Originals (Backup)  
+- `printed/` → erfolgreich gedruckte Dateien  
+- `failed/` → fehlerhafte Dateien landen hier  
 
-Leider liegt der rastertolabel Sourcecode aus dem Treiber nicht vor, weswegen die PPD Datei alleine leider nicht ausreicht und daher eine Treiberversion passend fuer die Architektur installiert werden muss.
+---
 
-Installation des Druckers in CUPS als "VEVOR_Y486", alternativ anpassbar im Script.
+## ⚙️ Installation
 
-## Scripts
+### 1. System-Pakete installieren
+```bash
+sudo apt update
+sudo apt install -y git python3-venv python3-pip inotify-tools
+### 2. Repository klonen
+bash
+Code kopieren
+git clone https://github.com/cs_pinkie/zebra-labelprinter.git
+cd zebra-labelprinter
+### 3. Python-Umgebung vorbereiten
+bash
+Code kopieren
+python3 -m venv ~/zebra-venv
+source ~/zebra-venv/bin/activate
+pip install --upgrade pip
+pip install -r requirements.txt
+deactivate
+### 4. Drucker einrichten
+Der Drucker muss als CUPS-Raw-Queue existieren, z. B. gk420.
+Test:
 
-- start.sh: startet inoticoming und wartet auf eingehende Files im definierten "incoming", bei neuer, abgelegter Datei (z.B. per Samba Share, etc.) wird das Script "incoming_label.py" aufgerufen (optional)
-- incoming_label.py: schneidet bzw. skaliert das Label anhand des jeweiligen Dateinamens und druckt es per lp
+bash
+Code kopieren
+echo "^XA^FO50,50^A0N,50,50^FDHello Zebra!^FS^XZ" | lp -d gk420 -o raw
+▶️ Autostart einrichten (systemd)
+1. Script ins System kopieren
+bash
+Code kopieren
+sudo cp zebra-watch.sh /usr/local/bin/
+sudo chmod +x /usr/local/bin/zebra-watch.sh
+2. Service installieren
+bash
+Code kopieren
+sudo cp zebra-watch.service.example /etc/systemd/system/zebra-watch.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now zebra-watch.service
+3. Status prüfen
+bash
+Code kopieren
+systemctl status zebra-watch.service --no-pager
+Logs anzeigen:
 
-## Miscellaneous
+bash
+Code kopieren
+journalctl -u zebra-watch.service -e
+📥 Nutzung
+Einfach eine Label-Datei ins incoming-Verzeichnis legen:
 
-Im Script wird zusaetzlich eine Tasmota-Steckdose am Labelprinter geschaltet (Funktion power_switch). Das kann man bei Bedarf natuerlich entfernen.
-Alternativ kann das Script auch einfach direkt ohne inoticoming aufgerufen werden (Usage: ./incoming_label.py FILE BASEDIR)
+bash
+Code kopieren
+cp ~/Downloads/dhl-label.pdf /var/tmp/labels/incoming/
+Das Script wandelt die Datei automatisch in ZPL um, schickt sie an den Drucker und verschiebt die Datei nach printed/.
 
-## Example
-- cd /var/tmp/testlabel
-- mkdir {incoming,original,printed}
-- neue Dateien landen IMMER im Verzeichnis "incoming"
-- ./incoming_label.py DHL-Paketmarke_XYZ_Bla_Bla.pdf /var/tmp/testlabel
+### 🔧 Troubleshooting
+-Nichts wird gedruckt
+→ Logs prüfen: journalctl -u zebra-watch.service -e
+→ sicherstellen, dass Drucker in CUPS als gk420 vorhanden ist
 
-Job 14 sent to VEVOR_Y486
+-Qualität schlecht / zu hell
+→ Schwellwert in print_label.py anpassen (lambda p: 0 if p < 200 else 255).
+Niedrigerer Wert = dunklerer Druck.
+
+-Andere Labelgröße (z. B. 50x30 mm)
+→ In print_label.py TARGET_W und TARGET_H anpassen (bei 203 dpi: 400×240).
+
+📜 Dateien in diesem Repo
+print_label.py – wandelt PDF/PNG/JPG/ZPL in ZPL-Grafik und sendet an Drucker
+zebra-watch.sh – Watcher-Script, überwacht incoming/ und ruft print_label.py auf
+zebra-watch.service.example – systemd-Unit (Beispiel, wird ins System kopiert)
+requirements.txt – Python-Abhängigkeiten
+README.md – diese Dokumentation
+
+🚀 To-Do / Ideen
+Unterstützung mehrerer Druckerqueues / Labelgrößen
+
+Templates für unterschiedliche Carrier (DHL, Hermes, Amazon, eBay)
+
+Web-Frontend zum Hochladen von Labels
+
+

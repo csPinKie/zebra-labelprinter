@@ -1,0 +1,5 @@
+#requirements file for easier installation on new systems like a pi zero w
+PyPDF2
+pymupdf
+pillow
+numpy

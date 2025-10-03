@@ -1,0 +1,21 @@
+[Unit]
+Description=Zebra Label Watcher
+After=network-online.target cups.service
+Wants=network-online.target
+
+[Service]
+User=admin
+Group=pi
+WorkingDirectory=/home/pi/zebra-labelprinter
+ExecStart=/usr/local/bin/zebra-watch.sh
+Restart=on-failure
+RestartSec=2
+# /etc/systemd/system/zebra-watch.service  (Beispiel)
+Environment="ZEBRA_PRINTER=gk420"
+Environment="LABEL_SIZE=100x150mm"
+Environment="ZEBRA_DPI=203"
+Environment="ZEBRA_THRESHOLD=200"
+
+
+[Install]
+WantedBy=multi-user.target
